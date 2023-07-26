@@ -29,9 +29,14 @@ public class CarPhysics : MonoBehaviour
     [SerializeField]
     [Tooltip("Default: ' Vertical ' | Keyboard Input for moving forward")]
     private string forwardAccelInputAxis;
+    [SerializeField] 
+    [Tooltip("Idely slowing down speed")]
+    private float forwardStrength;
     [SerializeField]
     [Tooltip("Idely slowing down speed")]
-    private float decellerateSpeed;
+    private float forwardDampen;
+    [Tooltip("Idely slowing down speed")]
+    private float forwardLastVelocity;
 
     // ----- Suspension
     [Header("Suspension")]
@@ -53,13 +58,36 @@ public class CarPhysics : MonoBehaviour
     [SerializeField]
     [Tooltip("X axis: velocity | Y axis: grip")]
     private AnimationCurve backWheelGrip;
-    private float turnVelocity;
-    private float turnRotation;
-    private float turnRotationLast;
+    [SerializeField]
+    private float turnDistanceMax;
     [SerializeField]
     private float turnStrength;
     [SerializeField]
     private float turnDampen;
+    
+    private float turnDistance;
+    private float turnVelocity;
+    private float turnRotation;
+    private float turnRotationLast;
+
+    // ----- Drifting
+    [SerializeField]
+    private Transform chassis;
+    [SerializeField]
+    private KeyCode driftButton;
+    [SerializeField]
+    private float driftRotationBase;
+    [SerializeField]
+    private float driftStrength;
+    [SerializeField]
+    private float driftDampen;
+    [SerializeField]
+    private float driftTurnRotationMax;
+    private float driftRotationTarget;
+    private float driftRotation;
+    private float driftVelocity;
+    private float driftRotationLast;
+    private bool driftStarted;
 
     // Car chassis physics rigidbody
     private Rigidbody rb;
@@ -69,6 +97,18 @@ public class CarPhysics : MonoBehaviour
     {
         // Grab the rigidbody from the car
         rb = GetComponent<Rigidbody>();
+
+        turnDistance = turnDistanceMax;
+    }
+
+    private void SpeedBoost(RaycastHit hit)
+    {
+        if(hit.collider.CompareTag("Speed Boost"))
+        {
+
+            Debug.Log("Speed Boost!");
+            rb.velocity = transform.forward * 20;
+        }
     }
 
     private void FixedUpdate()
@@ -87,17 +127,93 @@ public class CarPhysics : MonoBehaviour
             // Create a raycast hit. This will be used for dermining the distance from the car to ground
             RaycastHit hit;
 
+            Vector3 velocity = rb.GetPointVelocity(wheelTransform.position);
+
+
+            float steeringInput = Input.GetAxis(steeringInputAxis);
+
+            // Find the right-facing direction of the wheel, in terms of world-space (not relative to the car)
+            Vector3 steeringDirection = wheelTransform.right;
+
+
+            // Find the X component of this velocity
+            float steeringVelocity = Vector3.Dot(velocity, steeringDirection);
+
+            if (wheelTransform.name[0] == 'F')
+            {
+                // ------------ Drifting
+                if (Input.GetKey(driftButton))
+                {
+                    if (!driftStarted)
+                    {
+                        driftStarted = true;
+                        if(steeringInput > 0)
+                            driftRotationTarget = driftRotationBase;
+                        else 
+                            driftRotationTarget = -driftRotationBase;
+
+                        turnDistance = driftTurnRotationMax;
+                    }
+                }
+                else if(driftStarted)
+                {
+                    driftStarted = false;
+                    driftRotationTarget = 0;
+                    turnDistance = turnDistanceMax;
+                }
+
+                float targetDriftAngle = driftRotationTarget;
+
+                float deltaDriftAngle = targetDriftAngle - driftRotation;
+
+                float driftAccelleration = (driftStrength * (Time.fixedDeltaTime * deltaDriftAngle)) - (driftVelocity * driftDampen);
+
+                driftVelocity += driftAccelleration;
+
+                driftRotation += driftVelocity;
+
+                wheelTransform.Rotate(Vector3.up, driftRotation - driftRotationLast);
+
+                driftRotationLast = driftRotation;
+
+                // ------ Steering
+
+                float targetAngle = turnDistance * steeringInput;
+
+                float deltaAngle = targetAngle - turnRotation;
+
+                float wheelGrip = wheelTransform.name[0] == 'F' ? frontWheelGrip.Evaluate(steeringVelocity) : backWheelGrip.Evaluate(steeringVelocity);
+
+                float wheelRadius = wheelDiameter / 2f;
+
+                float turnAccelleration = (turnStrength * (Time.fixedDeltaTime * deltaAngle * wheelGrip * wheelRadius)) - (turnVelocity * turnDampen);
+
+                turnVelocity += turnAccelleration;
+
+                turnRotation += turnVelocity;
+
+                wheelTransform.Rotate(Vector3.up, turnRotation - turnRotationLast);
+
+                turnRotationLast = turnRotation;
+            }
+
+
             // If the ground is below the car
             if (Physics.Raycast(ray, out hit)){
-                if(hit.distance < 0.75f)
+
+                // ---------
+
+                if (hit.distance < 0.75f)
                 {
+                    SpeedBoost(hit);
+
+
                     // ---------- General -----
                     // Print the distance from the vehicle to the ground
                     if (developer)
                         Debug.Log($"Line Found at Value: {hit.distance}");
 
                     // Grab Universal information
-                    Vector3 velocity = rb.GetPointVelocity(wheelTransform.position);
 
                     // Refer to the wheel line. This will be used for development
                     LineRenderer IndicationLine = wheelTransform.GetComponent<LineRenderer>();
@@ -110,76 +226,38 @@ public class CarPhysics : MonoBehaviour
                     // If its a front wheel, give it front traction
 
                     // ---------- Forward -----
-                    // For
-                    Vector3 forwardDirection = transform.forward;
+                    // Apply the suspension upwards
+                    Vector3 forwardDirection = wheelTransform.forward;
 
-                    float forwardVelocityCurrent = Vector3.Dot(forwardDirection, velocity);
+                    forwardDirection *= wheelTransform.name.Contains('R') ? 1 : -1;
 
+                    // Find out the current velocity of the body, at the wheel
+                    float forwardVelocity = Vector3.Dot(forwardDirection, velocity);
+
+                    float forwardInput = Input.GetAxis(forwardAccelInputAxis);
+
+                    float forwardTarget = forwardInput * forwardMaxVelocity;
+
+                    float forwardAccel = (forwardVelocity - forwardLastVelocity) * (Time.fixedDeltaTime/0.015f);
+
+                    forwardLastVelocity = forwardVelocity;
+
+                    // Determine the offset
+                    // This value will be 0 if the distance from the ground is the wheel diameter
+                    float forwardVelocityOffset = forwardTarget - forwardVelocity;
+
+                    // Print the velocity to the logger
                     if (developer)
-                        Debug.Log($"Forward Current Velocity: {forwardVelocityCurrent}");
+                        Debug.Log($"Current Supporting Velocity: {forwardVelocity}");
 
-                    // Determine how much this should change
-                    float forwardDesiredVelocityChange = -forwardVelocityCurrent * decellerateSpeed;
+                    // Show the current suspension velocity
+                    //IndicationLine.SetPosition(1, Vector3.up * upwardsVelocity);
 
-                    // Apply the accelleration to the object
-                    float forwardAccel = forwardDesiredVelocityChange / (Time.fixedDeltaTime / 0.15f);
-
-                    Vector3 forwardForce = rb.mass * forwardAccel * forwardDirection;
-
-                    float accelInput = Input.GetAxis(forwardAccelInputAxis);
-
-                    if (developer)
-                        Debug.Log($"Forward Keyboard Input: {accelInput}");
-
-                    if (Mathf.Abs(accelInput) > 0f)
-                    {
-                        float normalizedSpeed = Mathf.Clamp01(Mathf.Abs(forwardVelocityCurrent) / forwardMaxVelocity);
-
-                        if (developer)
-                            Debug.Log($"Forward Normalized Speed: {normalizedSpeed}");
-
-                        float percentageTorque = forwardVelocity.Evaluate(normalizedSpeed) * accelInput;
-
-                        if (developer)
-                            Debug.Log($"Forward Percentage Torque: {percentageTorque}");
-
-                        forwardForce = forwardDirection * percentageTorque;
-
-                        if (developer)
-                            Debug.Log($"Forward Final Force: {forwardDirection}");
-                    }
+                    // Determine the force it will take to reach the target
+                    Vector3 forwardForce = forwardDirection * ((forwardVelocityOffset * forwardStrength) - (forwardAccel * forwardDampen));
 
 
                     // ---------- Steering -----
-                    float steeringInput = Input.GetAxis(steeringInputAxis);
-
-                    // Find the right-facing direction of the wheel, in terms of world-space (not relative to the car)
-                    Vector3 steeringDirection = wheelTransform.right;
-
-                    // Find the X component of this velocity
-                    float steeringVelocity = Vector3.Dot(velocity, steeringDirection);
-
-                    if (wheelTransform.name[0] == 'F')
-                    {
-                        float targetAngle = 45 * steeringInput;
-
-                        float deltaAngle = targetAngle - turnRotation;
-
-                        float wheelGrip = wheelTransform.name[0] == 'F' ? frontWheelGrip.Evaluate(steeringVelocity) : backWheelGrip.Evaluate(steeringVelocity);
-
-                        float wheelRadius = wheelDiameter / 2f;
-
-                        float turnAccelleration = (turnStrength * (Time.fixedDeltaTime * deltaAngle * wheelGrip * wheelRadius)) - (turnVelocity * turnDampen);
-
-                        turnVelocity += turnAccelleration;
-
-                        turnRotation += turnVelocity;
-
-                        wheelTransform.Rotate(Vector3.up, turnRotation - turnRotationLast);
-
-                        turnRotationLast = turnRotation;
-
-                    }
 
                     // Display this velocity to the line. Commented out if another direction line is used
                     IndicationLine.SetPosition(1, Vector3.right * steeringVelocity);
