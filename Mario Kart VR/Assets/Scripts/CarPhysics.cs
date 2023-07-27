@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Animations;
+using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 
 public class CarPhysics : MonoBehaviour
@@ -50,6 +51,8 @@ public class CarPhysics : MonoBehaviour
     // ----- Steering
     [Header("Steering")]
     [SerializeField]
+    private SteeringWheel steeringWheel;
+    [SerializeField]
     [Tooltip("Default: ' Horizontal ' | Keyboard Input for steering")]
     private string steeringInputAxis;
     [SerializeField]
@@ -64,7 +67,8 @@ public class CarPhysics : MonoBehaviour
     private float turnStrength;
     [SerializeField]
     private float turnDampen;
-    
+
+
     private float turnDistance;
     private float turnVelocity;
     private float turnRotation;
@@ -130,7 +134,7 @@ public class CarPhysics : MonoBehaviour
             Vector3 velocity = rb.GetPointVelocity(wheelTransform.position);
 
 
-            float steeringInput = Input.GetAxis(steeringInputAxis);
+            float steeringInput = steeringWheel.GetSteeringWheel();
 
             // Find the right-facing direction of the wheel, in terms of world-space (not relative to the car)
             Vector3 steeringDirection = wheelTransform.right;
@@ -234,7 +238,7 @@ public class CarPhysics : MonoBehaviour
                     // Find out the current velocity of the body, at the wheel
                     float forwardVelocity = Vector3.Dot(forwardDirection, velocity);
 
-                    float forwardInput = Input.GetAxis(forwardAccelInputAxis);
+                    float forwardInput = Input.GetAxis(forwardAccelInputAxis) + steeringWheel.GetForwardPower();
 
                     float forwardTarget = forwardInput * forwardMaxVelocity;
 
