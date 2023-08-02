@@ -12,6 +12,9 @@ public class MovementInput : MonoBehaviour
     private InputActionProperty leftHand;
 
     [SerializeField]
+    private Transform leftHandTransform;
+
+    [SerializeField]
     private float maxDistanceSteering;
 
     [SerializeField]
@@ -19,6 +22,9 @@ public class MovementInput : MonoBehaviour
 
     [SerializeField]
     private InputActionProperty leftHandSelect;
+
+    [SerializeField]
+    private Transform inputReference;
 
     private float steering;
 
@@ -38,18 +44,19 @@ public class MovementInput : MonoBehaviour
 
     private Vector3 GetHandPosition()
     {
-        return leftHand.action.ReadValue<Vector3>();
+        //return leftHand.action.ReadValue<Vector3>();
+        return leftHandTransform.position;
     }
     private bool GetHandSelect()
     {
-        return leftHandSelect.action.ReadValue<bool>();
+        return leftHandSelect.action.triggered;
     }
 
     private void CalculateSteering()
     {
         if(VRMode)
         {
-            float leftHandDistance = Vector3.Dot(GetHandPosition() - transform.position, transform.right);
+            float leftHandDistance = Vector3.Dot(GetHandPosition() - inputReference.position, inputReference.right);
 
             float cappedDistance = Mathf.Clamp(leftHandDistance, -maxDistanceSteering, maxDistanceSteering);
 
@@ -72,7 +79,7 @@ public class MovementInput : MonoBehaviour
     {
         if(VRMode)
         {
-            float leftHandDistance = Vector3.Dot(GetHandPosition() - transform.position, transform.forward);
+            float leftHandDistance = Vector3.Dot(GetHandPosition() - inputReference.position, inputReference.forward);
 
             float cappedDistance = Mathf.Clamp(leftHandDistance, -maxDistanceForward, maxDistanceForward);
 

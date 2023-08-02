@@ -8,15 +8,24 @@ public class VREnable : MonoBehaviour
     private bool enableVR;
 
     [SerializeField]
-    private MovementInput steeringWheel;
+    private MovementInput steeringWheel; 
 
     [SerializeField]
-    private CoreGrabInteractable coreGrab;
+    private List<CoreGrabInteractable> coreGrab;
+
+    [SerializeField]
+    private MovementInputVisual lever;
+
+
 
     // Start is called before the first frame update
     void Start()
     {
         steeringWheel.SetVREnabled(enableVR);
-        coreGrab.SetVREnabled(enableVR);
+        foreach (var grab in coreGrab)
+        {
+            grab.SetVREnabled(enableVR);
+        }
+        lever.SetVREnabled(enableVR);
     }
 }

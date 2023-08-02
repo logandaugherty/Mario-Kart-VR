@@ -13,7 +13,7 @@ PlayerSettings:
   useOnDemandResources: 0
   accelerometerFrequency: 60
   companyName: DefaultCompany
-  productName: Mario Kart VR
+  productName: Mario Kart VR City
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
   m_SplashScreenBackgroundColor: {r: 0.13725491, g: 0.12156863, b: 0.1254902, a: 1}
@@ -134,7 +134,10 @@ PlayerSettings:
   vulkanEnableCommandBufferRecycling: 1
   loadStoreDebugModeEnabled: 0
   bundleVersion: 0.1
-  preloadedAssets: []
+  preloadedAssets:
+  - {fileID: -9089770194498430563, guid: aa2e20e290db1ab4a9d76cbf181d8e48, type: 2}
+  - {fileID: 11400000, guid: 4416d9967591d284889e42f3248dbad2, type: 2}
+  - {fileID: 4681503715772960847, guid: 43bb7006f906f164eac146ca39798c0d, type: 2}
   metroInputSource: 0
   wsaTransparentSwapchain: 0
   m_HolographicPauseOnTrackingLoss: 1
@@ -154,7 +157,8 @@ PlayerSettings:
   androidSupportedAspectRatio: 1
   androidMaxAspectRatio: 2.1
   applicationIdentifier:
-    Android: com.DefaultCompany.MarioKartVR
+    Android: com.DefaultCompany.MarioKartVRCity
+    Standalone: com.DefaultCompany.Mario-Kart-VR-City
   buildNumber:
     Bratwurst: 0
     Standalone: 0
