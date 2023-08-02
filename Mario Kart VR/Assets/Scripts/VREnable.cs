@@ -14,6 +14,9 @@ public class VREnable : MonoBehaviour
     private List<CoreGrabInteractable> coreGrab;
 
     [SerializeField]
+    private MovementInput input;
+
+    [SerializeField]
     private MovementInputVisual lever;
 
 
@@ -26,6 +29,7 @@ public class VREnable : MonoBehaviour
         {
             grab.SetVREnabled(enableVR);
         }
+        input.SetVREnabled(enableVR);
         lever.SetVREnabled(enableVR);
     }
 }

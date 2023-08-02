@@ -1,31 +1,46 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
 public class MovementInputVisual : MonoBehaviour
 {
-    private bool VREnabled;
+    bool VREnabled;
 
     [SerializeField]
-    private Transform hand;
+    Transform hand;
+
+    MovementInput input;
+
+    [SerializeField]
+    TextMeshProUGUI forwardText;
+
+    [SerializeField]
+    TextMeshProUGUI steeringText;
+
+    [SerializeField]
+    Transform leverVisual;
 
     public void SetVREnabled(bool enable)
     {
         VREnabled = enable;
     }
 
-    // Start is called before the first frame update
-    void Start()
+    private void Start()
     {
-        
+        input = GetComponent<MovementInput>();
     }
 
     // Update is called once per frame
     void FixedUpdate()
     {
-        if(VREnabled)
+        forwardText.text = $"{System.Math.Round(input.GetForward(), 1)}";
+
+        steeringText.text = $"{System.Math.Round(input.GetSteering(), 1)}";
+
+        if (VREnabled)
         {
-            transform.LookAt(hand);
+            leverVisual.LookAt(hand);
         }
     }
 }

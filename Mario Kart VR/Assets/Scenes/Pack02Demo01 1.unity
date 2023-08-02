@@ -331,6 +331,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 72f18884777ca104d8739b97fdd1b777, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &798411472 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 1608243294531146708, guid: aea2afa57ed236d4fad79ca8e9f40c23, type: 3}
+  m_PrefabInstance: {fileID: 798411470}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e256f88c768703b44b3ee6866f87c245, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &862540371
 GameObject:
   m_ObjectHideFlags: 0
@@ -44331,7 +44342,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   enableVR: 1
   steeringWheel: {fileID: 798411471}
-  coreGrab: {fileID: 862540372}
+  coreGrab:
+  - {fileID: 0}
+  input: {fileID: 798411471}
+  lever: {fileID: 798411472}
 --- !u!4 &1099942171
 Transform:
   m_ObjectHideFlags: 0

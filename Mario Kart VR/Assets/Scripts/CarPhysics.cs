@@ -212,9 +212,6 @@ public class CarPhysics : MonoBehaviour
 
         // Grab Universal information
 
-        // Refer to the wheel line. This will be used for development
-        LineRenderer IndicationLine = wheelTransform.GetComponent<LineRenderer>();
-
         // Print the right-hand direction of the wheel
         if (developer)
             Debug.Log($"Wheel Right Direction: {wheelTransform.right}");
