@@ -3622,7 +3622,6 @@ MonoBehaviour:
   turnDistanceMax: 40
   turnStrength: 5.34
   turnDampen: 0.6
-  chassis: {fileID: 0}
   driftButton: 108
   driftRotationBase: 25
   driftStrength: 5

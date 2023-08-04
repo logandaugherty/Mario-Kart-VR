@@ -73,8 +73,7 @@ public class CarPhysics : MonoBehaviour
     private Vector3 steeringDirection;
 
     // ----- Drifting
-    [SerializeField]
-    private Transform chassis;
+    [Header("Drifting")]
     [SerializeField]
     private KeyCode driftButton;
     [SerializeField]
@@ -93,6 +92,7 @@ public class CarPhysics : MonoBehaviour
     private bool driftStarted;
 
     // ------ Jumping
+    [Header("Jumping")]
     [SerializeField]
     private float jumpSpeed;
     [SerializeField]
@@ -299,12 +299,93 @@ public class CarPhysics : MonoBehaviour
         return upwardForce;
     }
 
+    bool reseting;
+    bool waitingToSettle;
+    bool firstFrameOfAxisReset;
+    Vector3 resetPosition;
+    short axisIndexReset;
+
+    void BeginReset()
+    {
+        resetPosition = transform.position + Vector3.up * 2;
+        rb.angularVelocity = Vector3.zero;
+        rb.velocity = Vector3.zero;
+        rb.isKinematic = true;
+        reseting = true;
+        firstFrameOfAxisReset = true;
+    }
+
+    void IterateReset()
+    {
+        
+        if(firstFrameOfAxisReset)
+        {
+            Debug.Log("First Frame!");
+            firstFrameOfAxisReset = false;
+            Invoke(nameof(AxisComplete), 1);
+        }
+        
+        Vector3 targetEuler = transform.eulerAngles;
+
+        if (axisIndexReset == 0)
+            targetEuler.x = 0;
+        if (axisIndexReset == 1)
+            targetEuler.y = 0;
+        if (axisIndexReset == 2)
+            targetEuler.z = 0;
+
+        if (axisIndexReset == 3)
+        {
+            waitingToSettle = false;
+            reseting = false;
+            axisIndexReset = 0;
+            rb.isKinematic = false;
+            return;
+        }
+
+        transform.localEulerAngles = Vector3.Lerp(transform.eulerAngles, targetEuler, 0.1f);
+        transform.position = Vector3.Lerp(transform.position, resetPosition, 0.1f);
+    }
+
+    void AxisComplete()
+    {
+        if (reseting)
+        {
+            axisIndexReset++;
+            firstFrameOfAxisReset = true;
+        }
+    }
+
     private void FixedUpdate()
     {
         if (chassisEnabled)
         {
 
             IterateSteeringTarget();
+
+            Ray upsideDownRay = new(transform.position, Vector3.up);
+            
+            int layerMask = 1 << 6;
+
+            // This would cast rays only against colliders in layer 8.
+            // But instead we want to collide against everything except layer 8. The ~ operator does this, it inverts a bitmask.
+            layerMask = ~layerMask;
+
+
+            if (reseting)
+            {
+                IterateReset();
+            }
+            else if (Physics.Raycast(upsideDownRay, out var hit2, Mathf.Infinity, layerMask))
+            {
+                if (hit2.distance < 0.4f && !waitingToSettle)
+                {
+                    Debug.Log("Upside down");
+                    waitingToSettle = true;
+                    Invoke(nameof(BeginReset), 2);
+                }
+            }
+            else if(!waitingToSettle)
 
             // Loop through each wheel position in the vehicle
             foreach (var wheelTransform in wheelCollection)
@@ -371,7 +452,8 @@ public class CarPhysics : MonoBehaviour
 
                         Vector3 wheelShowcase = Vector3.up * (-hit.distance + 0.1f);
 
-                        wheelTransform.GetChild(0).position = wheelTransform.position + wheelShowcase;
+                        //wheelTransform.GetChild(0).position = wheelTransform.position + wheelShowcase;
+                        wheelTransform.GetChild(0).position = ray.GetPoint(hit.distance);
                     }
                 }
             }
