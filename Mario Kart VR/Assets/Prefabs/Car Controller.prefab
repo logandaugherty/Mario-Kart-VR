@@ -3629,6 +3629,7 @@ MonoBehaviour:
   driftTurnRotationMax: 10
   jumpSpeed: 10
   jumpChassisOffTime: 0.5
+  resetObject: {fileID: 0}
 --- !u!54 &8243493199551228928
 Rigidbody:
   m_ObjectHideFlags: 0

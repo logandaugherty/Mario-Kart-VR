@@ -1,0 +1,56 @@
+{
+    "name": "Car Controls Desktop",
+    "maps": [
+        {
+            "name": "Car Control",
+            "id": "8aeeeb49-bd68-48b2-a75f-2afce41b474c",
+            "actions": [
+                {
+                    "name": "New action",
+                    "type": "Value",
+                    "id": "99ede634-ff05-4437-916b-c2c4ca9a1d8b",
+                    "expectedControlType": "Axis",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "5fb69469-4afd-449d-b828-08990ac79894",
+                    "path": "*/{PrimaryAxis}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "New action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "4e74d9f8-499b-4447-a1e4-459bd356faf6",
+                    "path": "<Keyboard>/a",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "New action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "3f198c9e-f6a4-4121-9086-522c4cdd6b8f",
+                    "path": "",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "New action",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        }
+    ],
+    "controlSchemes": []
+}

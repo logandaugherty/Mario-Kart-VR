@@ -6,13 +6,7 @@ public class VREnable : MonoBehaviour
 {
     [SerializeField] private bool enableVR;
 
-    [SerializeField] private MovementInput steeringWheel; 
-
     [SerializeField] private List<CoreGrabInteractable> coreGrab;
-
-    [SerializeField] private MovementInput input;
-
-    [SerializeField] private MovementInputVisual lever;
 
     [SerializeField] private GameObject XROrigin;
 
@@ -23,13 +17,10 @@ public class VREnable : MonoBehaviour
     {
         XROrigin.SetActive(enableVR);
         CoreCamera.SetActive(!enableVR);
-        
-        steeringWheel.SetVREnabled(enableVR);
+
         foreach (var grab in coreGrab)
         {
             grab.SetVREnabled(enableVR);
         }
-        input.SetVREnabled(enableVR);
-        lever.SetVREnabled(enableVR);
     }
 }

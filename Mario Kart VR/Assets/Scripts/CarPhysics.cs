@@ -1,8 +1,12 @@
 using System.Collections.Generic;
+using Unity.XR.CoreUtils;
+using UnityEditor.UIElements;
 using UnityEngine;
+using static UnityEngine.GraphicsBuffer;
 
 public class CarPhysics : MonoBehaviour
 {
+
     [SerializeField]
     private bool developer;
 
@@ -49,7 +53,8 @@ public class CarPhysics : MonoBehaviour
     // ----- Steering
     [Header("Steering")]
     [SerializeField]
-    private MovementInput movementInput;
+    private GameObject steeringSystem;
+    private ScriptableSteering steering_input;
     [SerializeField]
     [Tooltip("X axis: velocity | Y axis: grip")]
     private AnimationCurve frontWheelGrip;
@@ -109,6 +114,15 @@ public class CarPhysics : MonoBehaviour
         // Grab the rigidbody from the car
         rb = GetComponent<Rigidbody>();
 
+        foreach(var steering_type in GetComponentsInChildren<ScriptableSteering>())
+        {
+            if (steering_type.enabled)
+            {
+                this.steering_input = steering_type;
+                Debug.Log($"Steering System: {steering_input.gameObject.name}");
+            }
+        }
+
         turnDistance = turnDistanceMax;
     }
 
@@ -129,7 +143,7 @@ public class CarPhysics : MonoBehaviour
 
     private void IterateDrift()
     {
-
+        /*
         // ------------ Drifting
         if (Input.GetKey(driftButton))
         {
@@ -150,7 +164,7 @@ public class CarPhysics : MonoBehaviour
             driftRotationTarget = 0;
             turnDistance = turnDistanceMax;
         }
-
+        */
         float targetDriftAngle = driftRotationTarget;
 
         float deltaDriftAngle = targetDriftAngle - driftRotation;
@@ -168,7 +182,8 @@ public class CarPhysics : MonoBehaviour
 
     private void IterateSteeringTarget()
     {
-        float targetAngle = turnDistance * movementInput.GetSteering();
+        float targetAngle = turnDistance * steering_input.GetSteering();
+        //float targetAngle = turnDistance * 0;
 
         /*
         float deltaAngle = targetAngle - turnRotation;
@@ -231,7 +246,7 @@ public class CarPhysics : MonoBehaviour
         // Find out the current velocity of the body, at the wheel
         float forwardVelocity = Vector3.Dot(forwardDirection, wheelVelocity);
 
-        float forwardTarget = movementInput.GetForward() * forwardMaxVelocity;
+        float forwardTarget = steering_input.GetForward() * forwardMaxVelocity;
 
         float forwardAccel = (forwardVelocity - forwardLastVelocity) * (Time.fixedDeltaTime / 0.015f);
 
@@ -301,58 +316,54 @@ public class CarPhysics : MonoBehaviour
 
     bool reseting;
     bool waitingToSettle;
-    bool firstFrameOfAxisReset;
-    Vector3 resetPosition;
-    short axisIndexReset;
-
+    [SerializeField] GameObject resetObject;
     void BeginReset()
     {
-        resetPosition = transform.position + Vector3.up * 2;
-        rb.angularVelocity = Vector3.zero;
-        rb.velocity = Vector3.zero;
-        rb.isKinematic = true;
+        resetObject.transform.position = transform.position + Vector3.up * 1f;
         reseting = true;
-        firstFrameOfAxisReset = true;
+        waitingToSettle = false;
+        rb.velocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        Invoke(nameof(EndReset),1f);
+    }
+    void EndReset()
+    {
+        reseting = false;
     }
 
     void IterateReset()
     {
-        
-        if(firstFrameOfAxisReset)
-        {
-            Debug.Log("First Frame!");
-            firstFrameOfAxisReset = false;
-            Invoke(nameof(AxisComplete), 1);
-        }
-        
-        Vector3 targetEuler = transform.eulerAngles;
+        // Move collider hand position to real hand position
+        rb.velocity = (resetObject.transform.position - transform.position) / Time.fixedDeltaTime / 10f;
 
-        if (axisIndexReset == 0)
-            targetEuler.x = 0;
-        if (axisIndexReset == 1)
-            targetEuler.y = 0;
-        if (axisIndexReset == 2)
-            targetEuler.z = 0;
+        // Rotate collider hand to real hand rotation
+        Quaternion rotationDifference = resetObject.transform.rotation * Quaternion.Inverse(transform.rotation);
+        rotationDifference.ToAngleAxis(out float angleInDegree, out Vector3 rotationAxis);
 
-        if (axisIndexReset == 3)
-        {
-            waitingToSettle = false;
-            reseting = false;
-            axisIndexReset = 0;
-            rb.isKinematic = false;
-            return;
-        }
-
-        transform.localEulerAngles = Vector3.Lerp(transform.eulerAngles, targetEuler, 0.1f);
-        transform.position = Vector3.Lerp(transform.position, resetPosition, 0.1f);
+        // Apply difference in angle
+        Vector3 rotationDifferenceInDegree = angleInDegree * rotationAxis;
+        rb.angularVelocity = (rotationDifferenceInDegree * Mathf.Deg2Rad / Time.fixedDeltaTime);
     }
 
-    void AxisComplete()
+    void PassiveWheelDistance()
     {
-        if (reseting)
+        foreach (var wheelTransform in wheelCollection)
         {
-            axisIndexReset++;
-            firstFrameOfAxisReset = true;
+            this.wheelTransform = wheelTransform;
+
+            // Create a ray that faces the ground.
+            // This is used for determining the distance from the ground
+            Ray ray = new(wheelTransform.position, Vector3.down);
+
+            // If the ground is below the car
+            if (Physics.Raycast(ray, out var hit, maxCastDistance))
+            {
+                wheelTransform.GetChild(0).localPosition = Vector3.down * (hit.distance + wheelDiameter / 2f);
+            }
+            else
+            {
+                wheelTransform.GetChild(0).localPosition = Vector3.down * maxCastDistance;
+            }
         }
     }
 
@@ -364,31 +375,28 @@ public class CarPhysics : MonoBehaviour
             IterateSteeringTarget();
 
             Ray upsideDownRay = new(transform.position, Vector3.up);
-            
-            int layerMask = 1 << 6;
 
-            // This would cast rays only against colliders in layer 8.
-            // But instead we want to collide against everything except layer 8. The ~ operator does this, it inverts a bitmask.
-            layerMask = ~layerMask;
-
+            LayerMask road = LayerMask.GetMask("Default");
 
             if (reseting)
             {
                 IterateReset();
+                PassiveWheelDistance();
             }
-            else if (Physics.Raycast(upsideDownRay, out var hit2, Mathf.Infinity, layerMask))
+            else if (Physics.Raycast(transform.position, transform.up, out var hit2, 100f, road))
             {
-                if (hit2.distance < 0.4f && !waitingToSettle)
+                if (!waitingToSettle)
                 {
                     Debug.Log("Upside down");
                     waitingToSettle = true;
-                    Invoke(nameof(BeginReset), 2);
+                    Invoke(nameof(BeginReset), 2.5f);
                 }
+                PassiveWheelDistance();
             }
-            else if(!waitingToSettle)
-
-            // Loop through each wheel position in the vehicle
-            foreach (var wheelTransform in wheelCollection)
+            else if (!waitingToSettle)
+            {
+                // Loop through each wheel position in the vehicle
+                foreach (var wheelTransform in wheelCollection)
             {
                 this.wheelTransform = wheelTransform;
 
@@ -414,48 +422,47 @@ public class CarPhysics : MonoBehaviour
                 // Create a ray that faces the ground.
                 // This is used for determining the distance from the ground
                 Ray ray = new(wheelTransform.position, Vector3.down);
-
+                indicationLine = wheelTransform.GetComponent<LineRenderer>();
 
                 // If the ground is below the car
-                if (Physics.Raycast(ray, out var hit))
+                if (Physics.Raycast(ray, out var hit, maxCastDistance))
                 {
                     this.hit = hit;
 
-                    indicationLine = wheelTransform.GetComponent<LineRenderer>();
+                        /*
 
-                    // ---------
-
-                    if (hit.distance < maxCastDistance)
+                    if (movementInput.GetJump())
                     {
-                        if (movementInput.GetJump())
-                        {
-                            IterateJump();
-                            break;
-                        }
+                        IterateJump();
+                        break;
+                    }*/
 
-                        SpeedBoost();
+                    SpeedBoost();
 
-                        IterateDebugLine();
+                    IterateDebugLine();
 
-                        Vector3 forwardForce = IterateForward();
+                    Vector3 forwardForce = IterateForward();
 
-                        Vector3 steeringForce = IterateSteeringForce();
+                    Vector3 steeringForce = IterateSteeringForce();
 
-                        Vector3 upwardForce = IterateSuspension();
+                    Vector3 upwardForce = IterateSuspension();
 
-                        // ---------- Result -----
-                        // Summate all forces and apply to vehicle
-                        Vector3 finalForce = forwardForce + steeringForce + upwardForce;
+                    // ---------- Result -----
+                    // Summate all forces and apply to vehicle
+                    Vector3 finalForce = forwardForce + steeringForce + upwardForce;
 
-                        // Apply forces to the car, at the wheel's position
-                        rb.AddForceAtPosition(finalForce, wheelTransform.position);
+                    // Apply forces to the car, at the wheel's position
+                    rb.AddForceAtPosition(finalForce, wheelTransform.position);
 
-                        Vector3 wheelShowcase = Vector3.up * (-hit.distance + 0.1f);
+                    Vector3 wheelShowcase = Vector3.up * (-hit.distance + 0.1f);
 
-                        //wheelTransform.GetChild(0).position = wheelTransform.position + wheelShowcase;
-                        wheelTransform.GetChild(0).position = ray.GetPoint(hit.distance);
-                    }
+                    wheelTransform.GetChild(0).localPosition = wheelShowcase;
                 }
+                else
+                {
+                    wheelTransform.GetChild(0).localPosition = Vector3.down * maxCastDistance;
+                }
+            }
             }
         }
     }
